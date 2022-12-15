@@ -10,19 +10,20 @@ public class Writer implements Runnable{
     public Writer(Database database){
         this.database = database;
     }
-
     @Override
     public void run() {
-       while(true) {
-        database.connectionWriters();
-        database.writing();
-        database.disconnectionWriters();
-        int timeOut = Randomer.getTimeOut();
-            System.out.println(Thread.currentThread().getName() + " отсоединился. Вернусь через " + timeOut + " секунд.");
-            try {
+       while(true) {         
+            try{
+                database.connection();               
+                database.works();
+                database.disconnection();
+                int timeOut = TimeFactory.getTimeOut();
+                System.out.println(TimeFactory.timeNow() + Thread.currentThread().getName() +
+                       " отключен от БД. Вернется через " + timeOut + " секунд(ы).");               
                 TimeUnit.SECONDS.sleep(timeOut);
-            } catch (InterruptedException ex) {   }
+                } 
+            catch (InterruptedException ex) { break; }     
         }
-    }
-    
+        System.out.println(TimeFactory.timeNow() + Thread.currentThread().getName() + " завершил работу в приложении."); 
+    }   
 }

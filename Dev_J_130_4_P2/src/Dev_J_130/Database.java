@@ -7,64 +7,70 @@ public class Database {
     
     private int readersCount = 0;
     private boolean writerConnected;
-     
-    public synchronized void connectionReaders(){
-        while(writerConnected) {
-            try {
-                System.out.println(Randomer.timeNow() + getThreadName() + " не может подключиться к базе данных. База занята писателем. Ждем.");
-                wait(); } 
-            catch (InterruptedException ex) {  }
-            }
-        readersCount++;
-        System.out.println(Randomer.timeNow() + getThreadName() + " подключился к базе данных. Сейчас к ней подключено читателей - " + 
-               readersCount + " и писателей - " + (writerConnected? 1:0)); 
-    } 
-    public synchronized void connectionWriters(){        
-        while(writerConnected || readersCount>0) {
-            try {
-                System.out.println(Randomer.timeNow() + getThreadName() + " не может подключиться к базе данных. База занята. Ждем.");
-                wait(); } 
-            catch (InterruptedException ex) {  }
-            }            
-        writerConnected = true;
-        System.out.println(Randomer.timeNow() + getThreadName() + " подключился к базе данных. Сейчас к ней подключено читателей - " + 
-               readersCount + " и писателей - " + (writerConnected? 1:0)); 
-    } 
-       
-    public synchronized void disconnectionReaders(){
-        readersCount--;
-        if(readersCount==0)
-            notifyAll();               
-        System.out.println(Randomer.timeNow() + getThreadName() + " отключился от базы данных. Сейчас к ней подключено читателей - " + 
-               readersCount + " и писателей - " + (writerConnected? 1:0));     
-    }
-    public synchronized void disconnectionWriters(){        
-        writerConnected = false;
-        notifyAll();        
-        System.out.println(Randomer.timeNow() + getThreadName() + " отключился от базы данных. Сейчас к ней подключено читателей - " + 
-               readersCount + " и писателей - " + (writerConnected? 1:0));
-                
-    }
-    public void reading(){
-       int waitTime = Randomer.getTimeOut();
-       System.out.println(Randomer.timeNow() + getThreadName() + " начал читать. Будет читать " + waitTime + " секунд.");
-           try {
-               TimeUnit.SECONDS.sleep(waitTime);
-           } catch (InterruptedException ex) { }
-       System.out.println(Randomer.timeNow() + getThreadName() + " закончил читать.");       
+    private final String readers;
+    private final String writers;
+
+    public Database(ThreadGroup readers, ThreadGroup writers) {
+        this.readers = readers.getName();
+        this.writers = writers.getName();
     }
     
-    public void writing(){
-       int waitTime = Randomer.getTimeOut();    
-       System.out.println(Randomer.timeNow() + getThreadName() + " начал писать. Будет писать " + waitTime + " секунд.");    
-       try {
-               TimeUnit.SECONDS.sleep(waitTime);
-           } catch (InterruptedException ex) { }
-       System.out.println(Randomer.timeNow() + getThreadName() + " закончил писать.");     
-  }
+    public synchronized void connection() throws InterruptedException{
+        if(getThreadGroupName().equals(readers)){
+           while(writerConnected) {
+            stateWait();  }
+        readersCount++;
+        }
+        if(getThreadGroupName().equals(writers)){
+           while(writerConnected || readersCount>0) {
+            stateWait();  }           
+        writerConnected = true;
+        }
+        System.out.println(TimeFactory.timeNow() + getThreadName() + " подключился к БД. Сейчас к ней подключено читателей - " + 
+               readersCount + " и писателей - " + (writerConnected? 1:0));  
+    }
 
+    public synchronized void disconnection(){
+        if(getThreadGroupName().equals(readers)){
+           readersCount--;
+            if(readersCount==0)
+               sendNotify();
+            else
+                System.out.println(TimeFactory.timeNow() + getThreadName() + " отключился от БД. Сейчас к ней подключено читателей - " + 
+               readersCount + " и писателей - " + (writerConnected? 1:0)); 
+        }
+        if(getThreadGroupName().equals(writers)){
+           writerConnected = false;
+           sendNotify();
+        }
+    }
+    public void works() throws InterruptedException{
+        int waitTime = TimeFactory.getTimeOut();
+        System.out.println(TimeFactory.timeNow() + getThreadName() + " начал действовать. Будет" 
+               + readOrWrite() + waitTime + " секунд(ы).");
+        TimeUnit.SECONDS.sleep(waitTime);
+        System.out.println(TimeFactory.timeNow() + getThreadName() + " закончил" + readOrWrite());     
+    }
+    
     private String getThreadName(){
         String threadName = Thread.currentThread().getName();         
         return threadName;
+    }
+    private String getThreadGroupName(){
+        String threadGroupName = Thread.currentThread().getThreadGroup().getName();         
+        return threadGroupName;
+    }
+    private void sendNotify(){
+        notifyAll();
+        System.out.println(TimeFactory.timeNow() + getThreadName() + " отключился от БД. Сейчас к ней подключено читателей - " + 
+               readersCount + " и писателей - " + (writerConnected? 1:0) + "\nБД свободна. Уведомление отправлено.");    
+    }
+    private void stateWait() throws InterruptedException{
+            System.out.println(TimeFactory.timeNow() + getThreadName() + 
+                    " не может подключиться к базе данных. БД занята. Ждет уведомления.");
+            wait();   
+    }
+    private String readOrWrite(){
+        return (getThreadGroupName().equals(readers))? " читать " : " писать ";
     }
 }

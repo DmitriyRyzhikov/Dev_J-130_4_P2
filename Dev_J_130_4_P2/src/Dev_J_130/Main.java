@@ -6,8 +6,6 @@ public class Main {
 
     public static void main(String[] args) {
         
-        new Processor().start(6, 4);
-  
-    }
-    
+        new Processor().startProcess(5, 5, 90);  
+    }    
 }
